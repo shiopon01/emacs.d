@@ -81,7 +81,7 @@
 
 (leaf dmacro
   :ensure t
-  :custom `((dmacro-key . ,(kbd "C-S-e")))
+  :custom `((dmacro-key . ,(kbd "C-c m")))
   :global-minor-mode global-dmacro-mode)
 
 ;; -----------------------------------------------------------------------------------------
