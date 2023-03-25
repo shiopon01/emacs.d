@@ -2,6 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
+;;(setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
 ;; <leaf-install-code>
 (eval-and-compile
   (customize-set-variable
@@ -242,22 +243,26 @@
   :custom `((dmacro-key . ,(kbd "C-M-j")))
   :global-minor-mode global-dmacro-mode)
 
-(leaf eglot
-  :doc "The Emacs Client for LSP servers"
-  :req "emacs-26.3" "jsonrpc-1.0.16" "flymake-1.2.1" "project-0.9.8" "xref-1.6.2" "eldoc-1.11.0" "seq-2.23" "external-completion-0.1"
-  :tag "languages" "convenience" "emacs>=26.3"
-  :url "https://github.com/joaotavora/eglot"
-  :added "2023-03-25"
-  :emacs>= 26.3
-  :ensure t
-  :after jsonrpc flymake project xref eldoc external-completion
-  :bind (("M-," . pop-tag-mark)
-         ("M-." . xref-find-definitions)))
+(leaf lsp-mode
+ :ensure t
+ :after spinner markdown-mode lv eldoc)
 
-(leaf python-mode
-  :ensure t
-  :require t
-  :hook (python-mode-hook . eglot-ensure))
+;; (leaf eglot
+;;   :doc "The Emacs Client for LSP servers"
+;;   :req "emacs-26.3" "jsonrpc-1.0.16" "flymake-1.2.1" "project-0.9.8" "xref-1.6.2" "eldoc-1.11.0" "seq-2.23" "external-completion-0.1"
+;;   :tag "languages" "convenience" "emacs>=26.3"
+;;   :url "https://github.com/joaotavora/eglot"
+;;   :added "2023-03-25"
+;;   :emacs>= 26.3
+;;   :ensure t
+;;   :after jsonrpc flymake project xref eldoc external-completion
+;;   :bind (("M-," . pop-tag-mark)
+;;          ("M-." . xref-find-definitions)))
+
+;; (leaf python-mode
+;;   :ensure t
+;;   :require t
+;;   :hook (python-mode-hook . eglot-ensure))
 
 ;; (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
 
@@ -297,7 +302,7 @@
  ;; If there is more than one, they won't work right.
  '(global-display-line-numbers-mode t)
  '(package-selected-packages
-   '(flycheck-elsa flycheck-package flycheck transient-dwim leaf-convert leaf-tree blackout el-get hydra leaf-keywords leaf)))
+   '(lsp-mode flycheck-elsa flycheck-package flycheck transient-dwim leaf-convert leaf-tree blackout el-get hydra leaf-keywords leaf)))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
