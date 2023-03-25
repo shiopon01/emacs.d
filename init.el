@@ -2,7 +2,6 @@
 ;;; Commentary:
 ;;; Code:
 
-;;(setq gnutls-algorithm-priority "NORMAL:-VERS-TLS1.3")
 ;; <leaf-install-code>
 (eval-and-compile
   (customize-set-variable
@@ -33,6 +32,13 @@
 (leaf transient-dwim
   :ensure t
   :bind (("M-=" . transient-dwim-dispatch)))
+
+;; バッファーの自動読み込み
+(leaf autorevert
+  :doc "revert buffers when files on disk change"
+  :tag "builtin"
+  :custom ((auto-revert-interval . 0.1))
+  :global-minor-mode global-auto-revert-mode)
 
 ;; Native Compile
 (eval-and-compile
@@ -98,6 +104,9 @@
            ;; (global-hl-line-mode . t) ;; 現在行を目立たせる
            ;; (line-number-mode . t)    ;; カーソルの位置が何行目かを表示する
            (column-number-mode . t) ;; 列番号を表示する
+           ;; (display-line-numbers-mode . t) ;; 列番号を表示する
+           (global-linum-mode . t)
+           (linum-format . "%4d ")
            (vc-follow-symlinks . t) ;; シンボリックリンクをたどるときの質問を回避
            (completion-ignore-case . t)) ;; ファイル名の補完で大文字と小文字の区別をなくす
   :config
@@ -206,13 +215,6 @@
 ;;
 ;; -----------------------------------------------------------------------------------------
 
-;; バッファーを自動再読み込み
-(leaf autorevert
-  :doc "revert buffers when files on disk change"
-  :tag "builtin"
-  :custom ((auto-revert-interval . 0.1))
-  :global-minor-mode global-auto-revert-mode)
-
 ;; check the spells
 ;; (leaf flycheck
 ;;   :doc "On-the-fly syntax checking"
@@ -244,8 +246,91 @@
   :global-minor-mode global-dmacro-mode)
 
 (leaf lsp-mode
- :ensure t
- :after spinner markdown-mode lv eldoc)
+  :doc "LSP mode"
+  :req "emacs-26.3" "dash-2.18.0" "f-0.20.0" "ht-2.3" "spinner-1.7.3" "markdown-mode-2.3" "lv-0" "eldoc-1.11"
+  :tag "languages" "emacs>=26.3"
+  :url "https://github.com/emacs-lsp/lsp-mode"
+  :added "2023-03-26"
+  :emacs>= 26.3
+  :ensure t
+  :after spinner markdown-mode lv eldoc
+  :require t
+  :commands lsp
+  :config
+  (leaf lsp-ui
+    :doc "UI modules for lsp-mode"
+    :req "emacs-26.1" "dash-2.18.0" "lsp-mode-6.0" "markdown-mode-2.3"
+    :tag "tools" "languages" "emacs>=26.1"
+    :url "https://github.com/emacs-lsp/lsp-ui"
+    :added "2023-03-26"
+    :emacs>= 26.1
+    :ensure t
+    :after lsp-mode markdown-mode
+    :hook (lsp-mode-hook . lsp-ui-mode)
+    :custom
+        (lsp-ui-doc-enable . t)            ;; original t
+    (lsp-ui-doc-header . nil)          ;; original nil
+    ;; (lsp-ui-doc-use-childframe . t)
+    (lsp-ui-doc-delay  . 1.5)
+    (lsp-ui-doc-include-signature . t)   ;; original nil
+    (lsp-ui-doc-position . 'top)         ;; top bottom at-point
+    (lsp-ui-doc-alignment . 'frame)
+    ;;   "How to align the doc.
+    ;;    only takes effect when `lsp-ui-doc-position' is 'top or 'bottom."
+    ;; (lsp-ui-doc-border . "orange")
+    ;; (lsp-ui-doc-border (face-foreground 'default))
+    (lsp-ui-doc-use-childframe . t)      ;; require 26
+    ;;(lsp-ui-doc-max-width . 70)
+    ;;(lsp-ui-doc-max-height . 20)
+    (lsp-ui-doc-use-webkit . nil)
+    (lsp-eldoc-enable-hover . nil)  ;; mini-buffer への表示
+
+    ;; disable cursor hover (keep mouse hover)
+    (lsp-ui-doc-show-with-cursor . nil)
+    ;; disable mouse hover (keep cursor hover)
+    (lsp-ui-doc-show-with-mouse . nil)
+
+    ;; lsp-ui-flycheck  ;; autoload ?
+    (lsp-ui-flycheck-enable . t)
+
+    (lsp-lens-enable . t)
+
+    ;; lsp-ui-sideline
+    ;;    Show informations of the symbols on the current line.
+    ;;    It also show flycheck diagnostics and LSP code actions
+    ;;
+    (lsp-ui-sideline-update-mode . 'line)  ;; line or point
+    (lsp-ui-sideline-enable . t)
+    (lsp-ui-sideline-show-symbol . t)
+    (lsp-ui-sideline-show-code-actions . t)
+    (lsp-ui-sideline-show-hover . nil)
+    (lsp-ui-sideline-show-diagnostics . t)
+    (lsp-ui-sideline-ignore-duplicate . t)
+    (lsp-ui-sideline-code-actions-prefix . "")
+    (lsp-ui-sideline-delay . 0.5)
+    ;;
+    ;; lsp-ui-imenu
+    (lsp-ui-imenu-enable . t)
+    (lsp-ui-imenu-kind-position . 'top)
+    ;;     (setq lsp-ui-imenu-colors `(,(face-foreground 'font-lock-keyword-face)
+    ;;                                 ,(face-foreground 'font-lock-string-face)
+    ;;                                 ,(face-foreground 'font-lock-constant-face)
+    ;;                                 ,(face-foreground 'font-lock-variable-name-face)))
+    ;;
+    ;; lsp-ui-peek
+    ;;   like Visual studio peak function.
+    (lsp-ui-peek-enable . t)
+    (lsp-ui-peek-show-directory . t)
+    (lsp-ui-peek-always-show . t)
+    ;; (lsp-ui-peek-list-width . 60)
+    ;; (lsp-ui-peek-peek-height . 20)
+    (lsp-ui-peek-fontify . 'on-demand)))
+
+(leaf python-mode
+  :ensure t
+  :require t
+  :hook (python-mode-hook . lsp))
+
 
 ;; (leaf eglot
 ;;   :doc "The Emacs Client for LSP servers"
@@ -258,12 +343,6 @@
 ;;   :after jsonrpc flymake project xref eldoc external-completion
 ;;   :bind (("M-," . pop-tag-mark)
 ;;          ("M-." . xref-find-definitions)))
-
-;; (leaf python-mode
-;;   :ensure t
-;;   :require t
-;;   :hook (python-mode-hook . eglot-ensure))
-
 ;; (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
 
 (leaf company
@@ -300,10 +379,8 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(global-display-line-numbers-mode t)
  '(package-selected-packages
-   '(lsp-mode flycheck-elsa flycheck-package flycheck transient-dwim leaf-convert leaf-tree blackout el-get hydra leaf-keywords leaf)))
-
+   '(company lsp-mode dmacro doom-themes transient-dwim leaf-convert leaf-tree blackout el-get hydra leaf-keywords leaf)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
