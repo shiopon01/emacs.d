@@ -75,11 +75,10 @@
            (user-mail-address . "shio.0323@gmail.com")
            (user-login-name . "shiopon01")
            (truncate-lines . t) ;; デフォルトで折り返さない
-           (menu-bar-mode . t) ;; メニューバー有効
+           (menu-bar-mode . nil) ;; メニューバー有効
            (tool-bar-mode . nil) ;; ツールバー無効
            (scroll-bar-mode . nil) ;; スクロールバー有効
            (indent-tabs-mode . nil)
-           ;; additional
            ;; (initial-scratch-message . "") ;; scratchのメッセージを消す
            ;; (debug-on-error . t) ;; エラー時にデバッグ
            ;; (frame-resize-pixelwise . t) ;; フレームサイズの指定
@@ -94,7 +93,7 @@
            ;; (use-dialog-box . nil)
            ;; (use-file-dialog . nil)
            ;; (show-paren-mode . t)     ;; 対応する括弧をハイライト表示させる
-           ;; (blink-cursor-mode . nil) ;; カーソルの点滅を止める
+           (blink-cursor-mode . nil) ;; カーソルの点滅を止める
            ;; (global-hl-line-mode . t) ;; 現在行を目立たせる
            ;; (line-number-mode . t)    ;; カーソルの位置が何行目かを表示する
            (column-number-mode . t) ;; 列番号を表示する
@@ -117,8 +116,8 @@
    ;; ("M-p" . (lambda () (interactive) (forward-line -10)))
    ;; ("M-n" . (lambda () (interactive) (forward-line 10)))
    ;; Move Buffer
-   ("M-," . previous-buffer)
-   ("M-." . next-buffer)
+   ("M-p" . previous-buffer)
+   ("M-n" . next-buffer)
    ;; Shell Command
    ("M-!" . async-shell-command)
    ("M-@" . shell-command)
@@ -186,19 +185,19 @@
     (set-display-table-slot display-table 'vertical-border (make-glyph-code ?│))
     (setq standard-display-table display-table))
   :config
-  (load-theme 'doom-dracula t)
+  (load-theme 'doom-acario-dark t)
   (doom-themes-neotree-config)
   (doom-themes-org-config))
 
 ;; フレーム設定
-(leaf *frame-setting
-  :init
-  (set-frame-parameter nil 'alpha 97)              ;; 透明度設定
-  (set-frame-parameter nil 'fullscreen 'maximized) ;; 起動時に最大化
-  :preface
-  (defun set-alpha (alpha-num)
-    (interactive "nAlpha: ")
-    (set-frame-parameter nil 'alpha (cons alpha-num '(97)))))
+;; (leaf *frame-setting
+;;   :init
+;;   (set-frame-parameter nil 'alpha 97)              ;; 透明度設定
+;;   (set-frame-parameter nil 'fullscreen 'maximized) ;; 起動時に最大化
+;;   :preface
+;;   (defun set-alpha (alpha-num)
+;;     (interactive "nAlpha: ")
+;;     (set-frame-parameter nil 'alpha (cons alpha-num '(97)))))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -214,34 +213,76 @@
   :global-minor-mode global-auto-revert-mode)
 
 ;; check the spells
-(leaf flycheck
-  :doc "On-the-fly syntax checking"
-  :emacs>= 24.3
-  :ensure t
-  :bind (("M-n" . flycheck-next-error)
-         ("M-p" . flycheck-previous-error))
-  :custom ((flycheck-emacs-lisp-initialize-packages . t))
-  :hook (emacs-lisp-mode-hook lisp-interaction-mode-hook)
-  :config
-  (leaf flycheck-package
-    :doc "A Flycheck checker for elisp package authors"
-    :ensure t
-    :config
-    (flycheck-package-setup))
+;; (leaf flycheck
+;;   :doc "On-the-fly syntax checking"
+;;   :emacs>= 24.3
+;;   :ensure t
+;;   :bind (("M-n" . flycheck-next-error)
+;;          ("M-p" . flycheck-previous-error))
+;;   :custom ((flycheck-emacs-lisp-initialize-packages . t))
+;;   :hook (emacs-lisp-mode-hook lisp-interaction-mode-hook)
+;;   :config
+;;   (leaf flycheck-package
+;;     :doc "A Flycheck checker for elisp package authors"
+;;     :ensure t
+;;     :config
+;;     (flycheck-package-setup))
 
-  (leaf flycheck-elsa
-    :doc "Flycheck for Elsa."
-    :emacs>= 25
-    :ensure t
-    :config
-    (flycheck-elsa-setup))
-  ;; ...
-  )
+;;   (leaf flycheck-elsa
+;;     :doc "Flycheck for Elsa."
+;;     :emacs>= 25
+;;     :ensure t
+;;     :config
+;;     (flycheck-elsa-setup))
+;;   ;; ...
+;;   )
 
 (leaf dmacro
   :ensure t
   :custom `((dmacro-key . ,(kbd "C-M-j")))
   :global-minor-mode global-dmacro-mode)
+
+(leaf eglot
+  :doc "The Emacs Client for LSP servers"
+  :req "emacs-26.3" "jsonrpc-1.0.16" "flymake-1.2.1" "project-0.9.8" "xref-1.6.2" "eldoc-1.11.0" "seq-2.23" "external-completion-0.1"
+  :tag "languages" "convenience" "emacs>=26.3"
+  :url "https://github.com/joaotavora/eglot"
+  :added "2023-03-25"
+  :emacs>= 26.3
+  :ensure t
+  :after jsonrpc flymake project xref eldoc external-completion
+  :bind (("M-," . pop-tag-mark)
+         ("M-." . xref-find-definitions)))
+
+(leaf python-mode
+  :ensure t
+  :require t
+  :hook (python-mode-hook . eglot-ensure))
+
+;; (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+
+(leaf company
+  :doc "Modular text completion framework"
+  :req "emacs-25.1"
+  :tag "matching" "convenience" "abbrev" "emacs>=25.1"
+  :url "http://company-mode.github.io/"
+  :added "2023-03-25"
+  :emacs>= 25.1
+  :ensure t
+  :bind ((company-active-map
+          ("M-n" . nil)
+          ("M-p" . nil)
+          ("C-s" . company-filter-candidates)
+          ("C-n" . company-select-next)
+          ("C-p" . company-select-previous)
+          ("<tab>" . company-complete-selection))
+         (company-search-map
+          ("C-n" . company-select-next)
+          ("C-p" . company-select-previous)))
+  :custom ((company-idle-delay . 0)
+           (company-minimum-prefix-length . 1)
+           (company-transformers . '(company-sort-by-occurrence)))
+  :global-minor-mode global-company-mode)
 
 ;; -----------------------------------------------------------------------------------------
 ;;
