@@ -11,7 +11,7 @@
           (expand-file-name
            (file-name-directory (or load-file-name byte-compile-current-file))))))
 
-;; Initialize package manager for compile time
+;; <leaf-install-code>
 (eval-and-compile
   (customize-set-variable
    'package-archives '(("org"   . "https://orgmode.org/elpa/")
@@ -22,22 +22,29 @@
     (package-refresh-contents)
     (package-install 'leaf))
 
-  ;; Leaf keywords
   (leaf leaf-keywords
-    :doc "Use leaf as a package manager"
-    :url "https://github.com/conao3/leaf.el"
     :ensure t
     :init
-    (leaf el-get
-      :ensure t
-      :custom
-      (el-get-notify-type       . 'message)
-      (el-get-git-shallow-clone . t))
+    ;; optional packages if you want to use :hydra, :el-get, :blackout,,,
     (leaf hydra :ensure t)
-    :config
-    (leaf-keywords-init)))
+    (leaf el-get :ensure t)
+    (leaf blackout :ensure t)
 
-;; Compile
+    :config
+    ;; initialize leaf-keywords.el
+    (leaf-keywords-init)))
+;; </leaf-install-code>
+
+;; Now you can use leaf!
+(leaf leaf-tree :ensure t)
+(leaf leaf-convert :ensure t)
+(leaf transient-dwim
+  :ensure t
+  :bind (("M-=" . transient-dwim-dispatch)))
+
+;; You can also configure builtin package via leaf!
+
+;; Native Compile
 (eval-and-compile
   (leaf *byte-compile
     :custom
@@ -69,13 +76,49 @@
 ;;
 ;; -----------------------------------------------------------------------------------------
 
+;; Builtin Properties
+(leaf cus-start
+  :doc "define customization properties of builtins"
+  :tag "builtin" "internal"
+  :custom ((user-full-name . "shiopon01")
+           (user-mail-address . "shio.0323@gmail.com")
+           (user-login-name . "shiopon01")
+           ;; (truncate-lines . t) ;; デフォルトで折り返さない
+           ;; (menu-bar-mode . nil) ;; メニューバー有効
+           ;; (tool-bar-mode . nil) ;; ツールバー無効
+           ;; (scroll-bar-mode . nil) ;; スクロールバー有効
+           ;; (indent-tabs-mode . nil)
+           ;; (initial-scratch-message . "") ;; scratchのメッセージを消す
+           ;; (debug-on-error . t) ;; エラー時にデバッグ
+           ;; (frame-resize-pixelwise . t) ;; フレームサイズの指定
+           ;; (enable-recursive-minibuffers . t) ;;
+           ;; (history-length . 1000)
+           ;; (history-delete-duplicates . t)
+           ;; (scroll-preserve-screen-position . t)
+           ;; (scroll-conservatively . 100)
+           ;; (mouse-wheel-scroll-amount . '(1 ((control) . 5)))
+           ;; (ring-bell-function . 'ignore)
+           ;; (text-quoting-style . 'straight)
+           ;; (use-dialog-box . nil)
+           ;; (use-file-dialog . nil)
+           ;; (show-paren-mode . t)     ;; 対応する括弧をハイライト表示させる
+           ;; (blink-cursor-mode . nil) ;; カーソルの点滅を止める
+           ;; (global-hl-line-mode . t) ;; 現在行を目立たせる
+           ;; (line-number-mode . t)    ;; カーソルの位置が何行目かを表示する
+           ;; (column-number-mode . t) ;; 列番号を表示する
+           ;; (display-line-numbers-mode . t) ;; 列番号を表示する
+           ;; (global-linum-mode . t)
+           ;; (linum-format . "%4d ")
+           ;; (vc-follow-symlinks . t) ;; シンボリックリンクをたどるときの質問を回避
+           ;;(completion-ignore-case . t))) ;; ファイル名の補完で大文字と小文字の区別をなくす
+           ))
 ;; Silencer
-;; (leaf no-littering
-;;   :doc "Keep .emacs.d clean"
-;;   :url "https://github.com/emacscollective/no-littering"
-;;   :custom `((custom-file . ,(no-littering-expand-etc-file-name "custom.el")))
-;;   :ensure t
-;;   :require t)
+(leaf no-littering
+  :doc "Keep .emacs.d clean"
+  :url "https://github.com/emacscollective/no-littering"
+  :config (custom-file (no-littering-expand-etc-file-name "custom.el"))
+  :ensure t
+  :require t)
 (leaf *to-be-quiet
   :doc "Quite annoying messages"
   :preface
@@ -230,97 +273,97 @@
 ;;
 ;; -----------------------------------------------------------------------------------------
 
-(leaf mozc
-  :url "https://github.com/google/mozc"
-  :if (equal system-type 'darwin)
-  :ensure t
-  :bind* ("M-l" . mozc-start)
-  :custom
-  (kana-cursor-color        . "#ff79c6")
-  (eisuu-cursor-color       . "cyan")
-  (default-input-method     . "japanese-mozc")
-  (mozc-helper-program-name . "/usr/local/bin/mozc_emacs_helper")
-  :preface
-  (defun mozc-start()
-    (interactive)
-    (set-cursor-color kana-cursor-color)
-    (message "Mozc start")
-    (mozc-mode 1))
-  (defun mozc-end()
-    (interactive)
-    (mozc-handle-event 'enter)
-    (set-cursor-color  eisuu-cursor-color)
-    (message "Mozc end")
-    (mozc-mode -1))
-  (defun disable-input-method ()
-    (interactive)
-    (if current-input-method
-        (deactivate-input-method)))
-  (defun mozc-insert-str (str)
-    (interactive)
-    (mozc-handle-event 'enter)
-    (insert str))
-  (defun mozc-insert-non () (interactive) (mozc-insert-str ""))
-  (defun mozc-insert-exc () (interactive) (mozc-insert-str "！"))
-  (defun mozc-insert-que () (interactive) (mozc-insert-str "？"))
-  (defun mozc-insert-com () (interactive) (mozc-insert-str "、"))
-  (defun mozc-insert-per () (interactive) (mozc-insert-str "。"))
-  :advice
-  (:after after-focus-change-function disable-input-method)
-  :hook (mozc-mode-hook
-         . (lambda ()
-             (define-key mozc-mode-map (kbd "C-m")     'mozc-insert-non)
-             (define-key mozc-mode-map (kbd "<enter>") 'mozc-insert-non)
-             (define-key mozc-mode-map "l"             'mozc-end)
-             (define-key mozc-mode-map "!"             'mozc-insert-exc)
-             (define-key mozc-mode-map "?"             'mozc-insert-que)
-             (define-key mozc-mode-map ","             'mozc-insert-com)
-             (define-key mozc-mode-map "."             'mozc-insert-per))))
+;; (leaf mozc
+;;   :url "https://github.com/google/mozc"
+;;   :if (equal system-type 'darwin)
+;;   :ensure t
+;;   :bind* ("M-l" . mozc-start)
+;;   :custom
+;;   (kana-cursor-color        . "#ff79c6")
+;;   (eisuu-cursor-color       . "cyan")
+;;   (default-input-method     . "japanese-mozc")
+;;   (mozc-helper-program-name . "/usr/local/bin/mozc_emacs_helper")
+;;   :preface
+;;   (defun mozc-start()
+;;     (interactive)
+;;     (set-cursor-color kana-cursor-color)
+;;     (message "Mozc start")
+;;     (mozc-mode 1))
+;;   (defun mozc-end()
+;;     (interactive)
+;;     (mozc-handle-event 'enter)
+;;     (set-cursor-color  eisuu-cursor-color)
+;;     (message "Mozc end")
+;;     (mozc-mode -1))
+;;   (defun disable-input-method ()
+;;     (interactive)
+;;     (if current-input-method
+;;         (deactivate-input-method)))
+;;   (defun mozc-insert-str (str)
+;;     (interactive)
+;;     (mozc-handle-event 'enter)
+;;     (insert str))
+;;   (defun mozc-insert-non () (interactive) (mozc-insert-str ""))
+;;   (defun mozc-insert-exc () (interactive) (mozc-insert-str "！"))
+;;   (defun mozc-insert-que () (interactive) (mozc-insert-str "？"))
+;;   (defun mozc-insert-com () (interactive) (mozc-insert-str "、"))
+;;   (defun mozc-insert-per () (interactive) (mozc-insert-str "。"))
+;;   :advice
+;;   (:after after-focus-change-function disable-input-method)
+;;   :hook (mozc-mode-hook
+;;          . (lambda ()
+;;              (define-key mozc-mode-map (kbd "C-m")     'mozc-insert-non)
+;;              (define-key mozc-mode-map (kbd "<enter>") 'mozc-insert-non)
+;;              (define-key mozc-mode-map "l"             'mozc-end)
+;;              (define-key mozc-mode-map "!"             'mozc-insert-exc)
+;;              (define-key mozc-mode-map "?"             'mozc-insert-que)
+;;              (define-key mozc-mode-map ","             'mozc-insert-com)
+;;              (define-key mozc-mode-map "."             'mozc-insert-per))))
 
-(leaf mozc-posframe
-  :if (equal system-type 'darwin)
-  :doc "Use posframe for speed and multi-byte characters."
-  :url "https://github.com/Ladicle/mozc-posframe"
-  :el-get "Ladicle/mozc-posframe"
-  :require t
-  :custom
-  (mozc-candidate-style         . 'posframe)
-  (mozc-cand-posframe-separator . "\t\t")
-  :config
-  (mozc-posframe-register)
-  :custom-face
-  (mozc-cand-posframe-border-face . '((t (:background "#323445"))))
-  (mozc-cand-overlay-footer-face  . '((t (:foreground "#6272a4"))))
-  (mozc-cand-overlay-focused-face . '((t (:background "#44475a" :foreground "#76e0f3"))))
-  (mozc-cand-overlay-odd-face     . '((t (:background "#323445" :foreground "#8995ba"))))
-  (mozc-cand-overlay-even-face    . '((t (:background "#323445" :foreground "#8995ba")))))
+;; (leaf mozc-posframe
+;;   :if (equal system-type 'darwin)
+;;   :doc "Use posframe for speed and multi-byte characters."
+;;   :url "https://github.com/Ladicle/mozc-posframe"
+;;   :el-get "Ladicle/mozc-posframe"
+;;   :require t
+;;   :custom
+;;   (mozc-candidate-style         . 'posframe)
+;;   (mozc-cand-posframe-separator . "\t\t")
+;;   :config
+;;   (mozc-posframe-register)
+;;   :custom-face
+;;   (mozc-cand-posframe-border-face . '((t (:background "#323445"))))
+;;   (mozc-cand-overlay-footer-face  . '((t (:foreground "#6272a4"))))
+;;   (mozc-cand-overlay-focused-face . '((t (:background "#44475a" :foreground "#76e0f3"))))
+;;   (mozc-cand-overlay-odd-face     . '((t (:background "#323445" :foreground "#8995ba"))))
+;;   (mozc-cand-overlay-even-face    . '((t (:background "#323445" :foreground "#8995ba")))))
 
-(leaf *pbcopy-and-pbpaste
-  :if (equal system-type 'darwin)
-  :preface
-  (defun copy-from-osx ()
-    (shell-command-to-string "pbpaste"))
-  (defun paste-to-osx (text)
-    (let ((process-connection-type nil))
-      (let ((proc (start-process "pbcopy" "*Messages*" "pbcopy")))
-        (process-send-string proc text)
-        (process-send-eof proc))))
-  :custom
-  (mac-option-modifier         . 'super)
-  (mac-command-modifier        . 'meta)
-  (interprogram-cut-function   . 'paste-to-osx)
-  (interprogram-paste-function . 'copy-from-osx))
+;; (leaf *pbcopy-and-pbpaste
+;;   :if (equal system-type 'darwin)
+;;   :preface
+;;   (defun copy-from-osx ()
+;;     (shell-command-to-string "pbpaste"))
+;;   (defun paste-to-osx (text)
+;;     (let ((process-connection-type nil))
+;;       (let ((proc (start-process "pbcopy" "*Messages*" "pbcopy")))
+;;         (process-send-string proc text)
+;;         (process-send-eof proc))))
+;;   :custom
+;;   (mac-option-modifier         . 'super)
+;;   (mac-command-modifier        . 'meta)
+;;   (interprogram-cut-function   . 'paste-to-osx)
+;;   (interprogram-paste-function . 'copy-from-osx))
 
-(leaf exec-path-from-shell
-  :doc "Share PATH from shell environment variables"
-  :url "https://github.com/purcell/exec-path-from-shell"
-  :ensure t
-  :if (and (equal system-type 'darwin) (window-system))
-  :custom
-  (exec-path-from-shell-check-startup-files . nil)
-  (exec-path-from-shell-variables . '("PATH" "GOPATH" "LC_LANG" "LANG"))
-  :config
-  (exec-path-from-shell-initialize))
+;; (leaf exec-path-from-shell
+;;   :doc "Share PATH from shell environment variables"
+;;   :url "https://github.com/purcell/exec-path-from-shell"
+;;   :ensure t
+;;   :if (and (equal system-type 'darwin) (window-system))
+;;   :custom
+;;   (exec-path-from-shell-check-startup-files . nil)
+;;   (exec-path-from-shell-variables . '("PATH" "GOPATH" "LC_LANG" "LANG"))
+;;   :config
+;;   (exec-path-from-shell-initialize))
 
 
 ;; -----------------------------------------------------------------------------------------
@@ -329,26 +372,26 @@
 ;;
 ;; -----------------------------------------------------------------------------------------
 
-(leaf smartparens
-  :ensure t
-  :require smartparens-config
-  :global-minor-mode smartparens-global-mode
-  :bind
-  (:smartparens-mode-map
-   ("M-<DEL>" . sp-backward-unwrap-sexp)
-   ("M-]"     . sp-up-sexp)
-   ("M-["     . sp-down-sexp)
-   ("C-("     . sp-beginning-of-sexp)
-   ("C-)"     . sp-end-of-sexp)
-   ("C-M-f"   . sp-forward-sexp)
-   ("C-M-b"   . sp-backward-sexp)
-   ("C-M-n"   . sp-next-sexp)
-   ("C-M-p"   . sp-previous-sexp))
-  :config
-  (sp-local-pair 'org-mode "*" "*")
-  (sp-local-pair 'org-mode "=" "=")
-  (sp-local-pair 'org-mode "~" "~")
-  (sp-local-pair 'org-mode "+" "+"))
+;; (leaf smartparens
+;;   :ensure t
+;;   :require smartparens-config
+;;   :global-minor-mode smartparens-global-mode
+;;   :bind
+;;   (:smartparens-mode-map
+;;    ("M-<DEL>" . sp-backward-unwrap-sexp)
+;;    ("M-]"     . sp-up-sexp)
+;;    ("M-["     . sp-down-sexp)
+;;    ("C-("     . sp-beginning-of-sexp)
+;;    ("C-)"     . sp-end-of-sexp)
+;;    ("C-M-f"   . sp-forward-sexp)
+;;    ("C-M-b"   . sp-backward-sexp)
+;;    ("C-M-n"   . sp-next-sexp)
+;;    ("C-M-p"   . sp-previous-sexp))
+;;   :config
+;;   (sp-local-pair 'org-mode "*" "*")
+;;   (sp-local-pair 'org-mode "=" "=")
+;;   (sp-local-pair 'org-mode "~" "~")
+;;   (sp-local-pair 'org-mode "+" "+"))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -356,88 +399,88 @@
 ;;
 ;; -----------------------------------------------------------------------------------------
 
-(leaf *convert-letter-case
-  :bind*
-  (("M-u" . upcase-backward-word)
-   ("M-_" . downcase-backward-word)
-   ("M-c" . capitalize-backward-word))
-  :preface
-  (defun upcase-backward-word (arg)
-    (interactive "p")
-    (upcase-word (- arg)))
-  (defun downcase-backward-word (arg)
-    (interactive "p")
-    (downcase-word (- arg)))
-  (defun capitalize-backward-word (arg)
-    (interactive "p")
-    (capitalize-word (- arg))))
+;; (leaf *convert-letter-case
+;;   :bind*
+;;   (("M-u" . upcase-backward-word)
+;;    ("M-_" . downcase-backward-word)
+;;    ("M-c" . capitalize-backward-word))
+;;   :preface
+;;   (defun upcase-backward-word (arg)
+;;     (interactive "p")
+;;     (upcase-word (- arg)))
+;;   (defun downcase-backward-word (arg)
+;;     (interactive "p")
+;;     (downcase-word (- arg)))
+;;   (defun capitalize-backward-word (arg)
+;;     (interactive "p")
+;;     (capitalize-word (- arg))))
 
-(leaf *smart-kill
-  :bind*
-  (("M-d" . kill-word-at-point)
-   ("C-w" . backward-kill-word-or-region))
-  :init
-  (defun kill-word-at-point ()
-    (interactive)
-    (let ((char (char-to-string (char-after (point)))))
-      (cond
-       ((string= " " char) (delete-horizontal-space))
-       ((string-match "[\t\n -@\[-`{-~],.、。" char) (kill-word 1))
-       (t (forward-char) (backward-word) (kill-word 1)))))
-  (defun backward-kill-word-or-region (&optional arg)
-    (interactive "p")
-    (if (region-active-p)
-        (call-interactively #'kill-region)
-      (backward-kill-word arg))))
+;; (leaf *smart-kill
+;;   :bind*
+;;   (("M-d" . kill-word-at-point)
+;;    ("C-w" . backward-kill-word-or-region))
+;;   :init
+;;   (defun kill-word-at-point ()
+;;     (interactive)
+;;     (let ((char (char-to-string (char-after (point)))))
+;;       (cond
+;;        ((string= " " char) (delete-horizontal-space))
+;;        ((string-match "[\t\n -@\[-`{-~],.、。" char) (kill-word 1))
+;;        (t (forward-char) (backward-word) (kill-word 1)))))
+;;   (defun backward-kill-word-or-region (&optional arg)
+;;     (interactive "p")
+;;     (if (region-active-p)
+;;         (call-interactively #'kill-region)
+;;       (backward-kill-word arg))))
 
-(leaf *copy-info-to-clipboard
-  :preface
-  (defun browse-url-or-copy ()
-    "Browse URL if window-sytem otherwise copy it"
-    (interactive)
-    (if (window-system)
-        (browse-url-at-point)
-      (kill-new (thing-at-point-url-at-point))))
-  (defun copy-filepath ()
-    "Copy file path of the current buffer into the clipboard."
-    (interactive)
-    (let ((file-path buffer-file-name)
-          (dir-path default-directory))
-      (cond
-       (file-path
-        (kill-new (expand-file-name file-path)))
-       (dir-path
-        (kill-new (expand-file-name dir-path)))
-       (t (error-message-string "Fail to get path name.")))))
-  (defun copy-filename ()
-    "Copy filename of the current buffer into the clipboard."
-    (interactive)
-    (let ((file-path buffer-file-name)
-          (dir-path default-directory))
-      (cond
-       (file-path
-        (kill-new (file-name-nondirectory file-path)))
-       (dir-path
-        (kill-new (file-name-nondirectory dir-path)))
-       (t (error-message-string "Fail to get path name.")))))
-  (defun copy-filename-with-line()
-    "Copy filename with line number at the cursor into the clipboard."
-    (interactive)
-    (let ((file-path buffer-file-name)
-          (dir-path default-directory))
-      (cond
-       (file-path
-        (kill-new
-         (format "%s:%s"
-                 (file-name-nondirectory file-path)
-                 (count-lines (point-min) (point)))))
-       (dir-path
-        (kill-new (file-name-nondirectory dir-path)))
-       (t (error-message-string "Fail to get path name."))))))
+;; (leaf *copy-info-to-clipboard
+;;   :preface
+;;   (defun browse-url-or-copy ()
+;;     "Browse URL if window-sytem otherwise copy it"
+;;     (interactive)
+;;     (if (window-system)
+;;         (browse-url-at-point)
+;;       (kill-new (thing-at-point-url-at-point))))
+;;   (defun copy-filepath ()
+;;     "Copy file path of the current buffer into the clipboard."
+;;     (interactive)
+;;     (let ((file-path buffer-file-name)
+;;           (dir-path default-directory))
+;;       (cond
+;;        (file-path
+;;         (kill-new (expand-file-name file-path)))
+;;        (dir-path
+;;         (kill-new (expand-file-name dir-path)))
+;;        (t (error-message-string "Fail to get path name.")))))
+;;   (defun copy-filename ()
+;;     "Copy filename of the current buffer into the clipboard."
+;;     (interactive)
+;;     (let ((file-path buffer-file-name)
+;;           (dir-path default-directory))
+;;       (cond
+;;        (file-path
+;;         (kill-new (file-name-nondirectory file-path)))
+;;        (dir-path
+;;         (kill-new (file-name-nondirectory dir-path)))
+;;        (t (error-message-string "Fail to get path name.")))))
+;;   (defun copy-filename-with-line()
+;;     "Copy filename with line number at the cursor into the clipboard."
+;;     (interactive)
+;;     (let ((file-path buffer-file-name)
+;;           (dir-path default-directory))
+;;       (cond
+;;        (file-path
+;;         (kill-new
+;;          (format "%s:%s"
+;;                  (file-name-nondirectory file-path)
+;;                  (count-lines (point-min) (point)))))
+;;        (dir-path
+;;         (kill-new (file-name-nondirectory dir-path)))
+;;        (t (error-message-string "Fail to get path name."))))))
 
-(leaf *chmod-executable-file
-  :doc "Change file mode to executable if it has shebang"
-  :hook (after-save-hook . executable-make-buffer-file-executable-if-script-p))
+;; (leaf *chmod-executable-file
+;;   :doc "Change file mode to executable if it has shebang"
+;;   :hook (after-save-hook . executable-make-buffer-file-executable-if-script-p))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -619,17 +662,22 @@
   :global-minor-mode global-wakatime-mode
   :custom (wakatime-cli-path . "/usr/local/bin/wakatime"))
 
+(leaf dmacro
+  :ensure t
+  :custom `((dmacro-key . ,(kbd "C-M-j")))
+  :global-minor-mode global-dmacro-mode)
+
 ;; Docker ---------------------------------------------------------------------------------
 
-(leaf docker
-  :doc "Manage docker from Emacs"
-  :url "https://github.com/Silex/docker.el"
-  :ensure t)
+;; (leaf docker
+;;   :doc "Manage docker from Emacs"
+;;   :url "https://github.com/Silex/docker.el"
+;;   :ensure t)
 
-(leaf docker-tramp
-  :doc "Remote development in docker container"
-  :url "https://github.com/emacs-pe/docker-tramp.el"
-  :ensure t)
+;; (leaf docker-tramp
+;;   :doc "Remote development in docker container"
+;;   :url "https://github.com/emacs-pe/docker-tramp.el"
+;;   :ensure t)
 
 ;; Git ------------------------------------------------------------------------------------
 
@@ -675,37 +723,37 @@
   :custom
   (browse-at-remote-prefer-symbolic . nil))
 
-(leaf smerge-mode
-  :doc "Manage git confliction"
-  :ensure t
-  :preface
-  (defun start-smerge-mode-with-hydra ()
-    (interactive)
-    (progn
-      (smerge-mode 1)
-      (smerge-mode/body)))
-  :pretty-hydra
-  ((:color blue :quit-key "q" :foreign-keys warn)
-   ("Move"
-    (("n" smerge-next "next")
-     ("p" smerge-prev "preview"))
-    "Keep"
-    (("b" smerge-keep-base "base")
-     ("u" smerge-keep-upper "upper")
-     ("l" smerge-keep-lower "lower")
-     ("a" smerge-keep-all "both")
-     ("\C-m" smerge-keep-current "current"))
-    "Others"
-    (("C" smerge-combine-with-next "combine with next")
-     ("r" smerge-resolve "resolve")
-     ("k" smerge-kill-current "kill current"))
-    "End"
-    (("ZZ" (lambda ()
-             (interactive)
-             (save-buffer)
-             (bury-buffer))
-      "Save and bury buffer" :color blue)
-     ("q" nil "cancel" :color blue)))))
+;; (leaf smerge-mode
+;;   :doc "Manage git confliction"
+;;   :ensure t
+;;   :preface
+;;   (defun start-smerge-mode-with-hydra ()
+;;     (interactive)
+;;     (progn
+;;       (smerge-mode 1)
+;;       (smerge-mode/body)))
+;;   :pretty-hydra
+;;   ((:color blue :quit-key "q" :foreign-keys warn)
+;;    ("Move"
+;;     (("n" smerge-next "next")
+;;      ("p" smerge-prev "preview"))
+;;     "Keep"
+;;     (("b" smerge-keep-base "base")
+;;      ("u" smerge-keep-upper "upper")
+;;      ("l" smerge-keep-lower "lower")
+;;      ("a" smerge-keep-all "both")
+;;      ("\C-m" smerge-keep-current "current"))
+;;     "Others"
+;;     (("C" smerge-combine-with-next "combine with next")
+;;      ("r" smerge-resolve "resolve")
+;;      ("k" smerge-kill-current "kill current"))
+;;     "End"
+;;     (("ZZ" (lambda ()
+;;              (interactive)
+;;              (save-buffer)
+;;              (bury-buffer))
+;;       "Save and bury buffer" :color blue)
+;;      ("q" nil "cancel" :color blue)))))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -848,42 +896,42 @@
     (progn
       (call-process-shell-command (concat "cd " (vc-root-dir) "; go mod vendor") nil 0)
       (message "Run 'go mod vendor'!"))))
-(leaf gotest
-  :doc "Run Go unit-tests"
-  :url "https://github.com/nlamirault/gotest.el"
-  :ensure t
-  :require t
-  :bind
-  (:go-mode-map
-   ("C-c t" . go-test-clean-and-current-test)
-	 ("C-c f" . go-test-clean-and-current-file)
-   ("C-c T" . go-test-current-test)
-	 ("C-c F" . go-test-current-file)
-	 ("C-c a" . go-test-current-project))
-  :preface
-  (defun go-test-clean-and-current-test()
-    (interactive)
-    (progn
-      (call-process-shell-command "go clean -testcache" nil 0)
-      (go-test-current-test)))
-  (defun go-test-clean-and-current-file()
-    (interactive)
-    (progn
-      (call-process-shell-command "go clean -testcache" nil 0)
-      (go-test-current-file))))
-(leaf go-gen-test
-  :doc "Generate tests for go code"
-  :url "https://github.com/s-kostyaev/go-gen-test"
-  :ensure t)
-(leaf go-eldoc
-  :doc "Show eldoc for Go functions"
-  :url "https://github.com/emacsorphanage/go-eldoc"
-  :ensure t
-  :hook (go-mode-hook . go-eldoc-setup))
-(leaf go-tag
-  :doc "Generate & Edit field tags for golang struct fields"
-  :url "https://github.com/brantou/emacs-go-tag"
-  :ensure t)
+;; (leaf gotest
+;;   :doc "Run Go unit-tests"
+;;   :url "https://github.com/nlamirault/gotest.el"
+;;   :ensure t
+;;   :require t
+;;   :bind
+;;   (:go-mode-map
+;;    ("C-c t" . go-test-clean-and-current-test)
+;; 	 ("C-c f" . go-test-clean-and-current-file)
+;;    ("C-c T" . go-test-current-test)
+;; 	 ("C-c F" . go-test-current-file)
+;; 	 ("C-c a" . go-test-current-project))
+;;   :preface
+;;   (defun go-test-clean-and-current-test()
+;;     (interactive)
+;;     (progn
+;;       (call-process-shell-command "go clean -testcache" nil 0)
+;;       (go-test-current-test)))
+;;   (defun go-test-clean-and-current-file()
+;;     (interactive)
+;;     (progn
+;;       (call-process-shell-command "go clean -testcache" nil 0)
+;;       (go-test-current-file))))
+;; (leaf go-gen-test
+;;   :doc "Generate tests for go code"
+;;   :url "https://github.com/s-kostyaev/go-gen-test"
+;;   :ensure t)
+;; (leaf go-eldoc
+;;   :doc "Show eldoc for Go functions"
+;;   :url "https://github.com/emacsorphanage/go-eldoc"
+;;   :ensure t
+;;   :hook (go-mode-hook . go-eldoc-setup))
+;; (leaf go-tag
+;;   :doc "Generate & Edit field tags for golang struct fields"
+;;   :url "https://github.com/brantou/emacs-go-tag"
+;;   :ensure t)
 
 ;; Python
 (leaf python
@@ -1282,99 +1330,99 @@
 
 ;; Babel ----------------------------------------------------------------------------------
 
-(leaf org-babel
-  :doc "Literate programming tools :: letting many different languages work together"
-  :url "https://orgmode.org/worg/org-contrib/babel/intro.html"
-  :custom
-  (org-export-babel-evaluate                . nil)
-  (org-confirm-babel-evaluate               . nil)
-  (org-babel-default-header-args:emacs-lisp . nil)
-  (org-babel-default-header-args:latex      . nil)
-  (org-babel-default-header-args:bash       . '((:details . "t")))
-  (org-babel-default-header-args:python     . '((:results . "output")))
-  (org-babel-default-header-args:go         . '((:imports . '("\"fmt\""))))
-  ;; Drawing
-  (org-ditaa-jar-path    . "/usr/share/ditaa/ditaa.jar")
-  (org-plantuml-jar-path . "~/.emacs.d/plantuml.jar")
-  ;; Language extensions :: completion candidates for company-org
-  (org-babel-tangle-lang-exts
-   . '(("java" . "java") ("lisp" . "lisp") ("python" . "python") ("rust" . "rust")
-       ("C++" . "cpp") ("go" . "go") ("emacs-lisp" . "emacs-lisp")
-       ("fish" . "fish") ("bash" . "bash") ("diff" . "diff")
-       ("terraform" . "terraform") ("dockerfile" . "dockerfile") ("conf" . "conf")
-       ("yaml" . "yaml") ("json" . "json")
-       ("sql" . "sql")
-       ("html" . "html") ("css" . "css")
-       ("markdown" . "markdown") ("text" . "text") ("latex" . "latex")))
-  :preface
-  (defun toggle-org-export-babel-evaluate ()
-    (interactive)
-    (if toggle-org-export-babel-evaluate
-        (progn
-          (setq toggle-org-export-babel-evaluate nil)
-          (message "toggle-org-export-babel-evaluate disabled :-P"))
-      (progn
-        (setq toggle-org-export-babel-evaluate t)
-        (message "toggle-org-export-babel-evaluate enabled :-)"))))
-  :config
-  ;; rust is enabled by rustic
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((plantuml . t) (dot      . t) (gnuplot  . t) (latex    . t)
-     (go       . t) (C        . t) (python   . t)
-     (shell    . t))))
+;; (leaf org-babel
+;;   :doc "Literate programming tools :: letting many different languages work together"
+;;   :url "https://orgmode.org/worg/org-contrib/babel/intro.html"
+;;   :custom
+;;   (org-export-babel-evaluate                . nil)
+;;   (org-confirm-babel-evaluate               . nil)
+;;   (org-babel-default-header-args:emacs-lisp . nil)
+;;   (org-babel-default-header-args:latex      . nil)
+;;   (org-babel-default-header-args:bash       . '((:details . "t")))
+;;   (org-babel-default-header-args:python     . '((:results . "output")))
+;;   (org-babel-default-header-args:go         . '((:imports . '("\"fmt\""))))
+;;   ;; Drawing
+;;   (org-ditaa-jar-path    . "/usr/share/ditaa/ditaa.jar")
+;;   (org-plantuml-jar-path . "~/.emacs.d/plantuml.jar")
+;;   ;; Language extensions :: completion candidates for company-org
+;;   (org-babel-tangle-lang-exts
+;;    . '(("java" . "java") ("lisp" . "lisp") ("python" . "python") ("rust" . "rust")
+;;        ("C++" . "cpp") ("go" . "go") ("emacs-lisp" . "emacs-lisp")
+;;        ("fish" . "fish") ("bash" . "bash") ("diff" . "diff")
+;;        ("terraform" . "terraform") ("dockerfile" . "dockerfile") ("conf" . "conf")
+;;        ("yaml" . "yaml") ("json" . "json")
+;;        ("sql" . "sql")
+;;        ("html" . "html") ("css" . "css")
+;;        ("markdown" . "markdown") ("text" . "text") ("latex" . "latex")))
+;;   :preface
+;;   (defun toggle-org-export-babel-evaluate ()
+;;     (interactive)
+;;     (if toggle-org-export-babel-evaluate
+;;         (progn
+;;           (setq toggle-org-export-babel-evaluate nil)
+;;           (message "toggle-org-export-babel-evaluate disabled :-P"))
+;;       (progn
+;;         (setq toggle-org-export-babel-evaluate t)
+;;         (message "toggle-org-export-babel-evaluate enabled :-)"))))
+;;   :config
+;;   ;; rust is enabled by rustic
+;;   (org-babel-do-load-languages
+;;    'org-babel-load-languages
+;;    '((plantuml . t) (dot      . t) (gnuplot  . t) (latex    . t)
+;;      (go       . t) (C        . t) (python   . t)
+;;      (shell    . t))))
 
-(leaf ob-async
-  :doc "Asynchronous src_block execution for org-babel"
-  :url "https://github.com/astahlman/ob-async"
-  :ensure t
-  :custom
-  (ob-async-no-async-languages-alist . '("python" "go")))
+;; (leaf ob-async
+;;   :doc "Asynchronous src_block execution for org-babel"
+;;   :url "https://github.com/astahlman/ob-async"
+;;   :ensure t
+;;   :custom
+;;   (ob-async-no-async-languages-alist . '("python" "go")))
 
-(leaf ob-go
-  :doc "Org-Babel support for evaluating go code"
-  :url "https://github.com/pope/ob-go"
-  :ensure t)
+;; (leaf ob-go
+;;   :doc "Org-Babel support for evaluating go code"
+;;   :url "https://github.com/pope/ob-go"
+;;   :ensure t)
 
 ;; Journal --------------------------------------------------------------------------------
 
-(leaf org-journal
-  :doc "A simple org-mode based journaling mode"
-  :url "https://github.com/bastibe/org-journal"
-  :ensure t
-  :preface
-  (defun org-journal-direct-open-entry (_arg &optional event)
-    "Open journal entry for selected date for viewing"
-    (interactive
-     (list current-prefix-arg last-nonmenu-event))
-    (let* ((time (org-journal--calendar-date->time
-                  (calendar-cursor-to-date t event))))
-      (find-file-other-window (org-journal--get-entry-path time))))
-  (defun org-journal-file-header-func (&optional time)
-    "Custom function to create journal header."
-    (concat
-     (pcase org-journal-file-type
-       (`daily (format-time-string
-                (concat
-                 "#+title: %Y/%m/%d (%a)\n"
-                 "#+date: [%Y-%m-%d %a %H:%M]\n"
-                 "#+setupfile: ~/doc/setup.org")
-                time))
-       (`weekly "#+title: Weekly Journal\n %s")
-       (`monthly "#+title: Monthly Journal\n")
-       (`yearly "#+title: Yearly Journal\n"))))
-  :bind
-  ((:calendar-mode-map
-    ("j" . org-journal-direct-open-entry)
-    ("n" . org-journal-new-date-entry)))
-  :custom
-  (org-journal-enable-agenda-integration . t)
-  (org-journal-file-header . 'org-journal-file-header-func)
-  (org-journal-file-format . "%Y/%m/%d.org")
-  (org-journal-date-format . "")
-  (org-journal-time-prefix . "")
-  :custom-face
-  (org-journal-calendar-entry-face . '((t (:foreground "#ff79c6")))))
+;; (leaf org-journal
+;;   :doc "A simple org-mode based journaling mode"
+;;   :url "https://github.com/bastibe/org-journal"
+;;   :ensure t
+;;   :preface
+;;   (defun org-journal-direct-open-entry (_arg &optional event)
+;;     "Open journal entry for selected date for viewing"
+;;     (interactive
+;;      (list current-prefix-arg last-nonmenu-event))
+;;     (let* ((time (org-journal--calendar-date->time
+;;                   (calendar-cursor-to-date t event))))
+;;       (find-file-other-window (org-journal--get-entry-path time))))
+;;   (defun org-journal-file-header-func (&optional time)
+;;     "Custom function to create journal header."
+;;     (concat
+;;      (pcase org-journal-file-type
+;;        (`daily (format-time-string
+;;                 (concat
+;;                  "#+title: %Y/%m/%d (%a)\n"
+;;                  "#+date: [%Y-%m-%d %a %H:%M]\n"
+;;                  "#+setupfile: ~/doc/setup.org")
+;;                 time))
+;;        (`weekly "#+title: Weekly Journal\n %s")
+;;        (`monthly "#+title: Monthly Journal\n")
+;;        (`yearly "#+title: Yearly Journal\n"))))
+;;   :bind
+;;   ((:calendar-mode-map
+;;     ("j" . org-journal-direct-open-entry)
+;;     ("n" . org-journal-new-date-entry)))
+;;   :custom
+;;   (org-journal-enable-agenda-integration . t)
+;;   (org-journal-file-header . 'org-journal-file-header-func)
+;;   (org-journal-file-format . "%Y/%m/%d.org")
+;;   (org-journal-date-format . "")
+;;   (org-journal-time-prefix . "")
+;;   :custom-face
+;;   (org-journal-calendar-entry-face . '((t (:foreground "#ff79c6")))))
 
 ;; Capture --------------------------------------------------------------------------------
 
@@ -1527,49 +1575,49 @@
                      (setq-local company-backends '(company-org-block))
                      (company-mode +1))))
 
-(leaf *org-hydra
-  :doc "Hydra template for org metadata"
-  :bind
-  ((:org-mode-map
-    :package org
-    ("#" . insert-or-open-org-hydra))
-   (:mozc-mode-map
-    :package mozc
-    ("#" . *org-hydra/body)))
-  :preface
-  (defun insert-or-open-org-hydra ()
-    (interactive)
-    (if (or (region-active-p) (looking-back "^\s*" 1))
-        (*org-hydra/body)
-      (self-insert-command 1)))
-  :pretty-hydra
-  ((:title " Org Mode" :color blue :quit-key "q" :foreign-keys warn :separator "-")
-   ("Header"
-    (("t" (insert "#+title: ")       "title")
-     ("l" (insert "#+lang: ")        "language")
-     ("u" (insert "#+setupfile: ~/doc/setup.org") "setupfile")
-     ("i" (insert "#+include: ")     "include")
-     ("o" (insert "#+options: ")     "options")
-     ("a" (insert (format-time-string "#+lastmod: [%Y-%m-%d %a %H:%M]" (current-time))) "lastmod"))
-    "Hugo"
-    (("d" (insert "#+draft: true")    "draft")
-     ("S" (insert "#+stale: true")    "stale")
-     ("m" (insert "#+menu: pin")      "pinned")
-     ("g" (insert "#+tags[]: ")       "tags")
-     ("x" (insert "#+hugo_base_dir: ~/Developments/src/github.com/Ladicle/blog") "base-dir")
-     ("s" (insert "#+hugo_section: post") "section"))
-    "Book"
-    (("p" (insert "#+progress: true") "progress")
-     ("f" (insert "#+format: PDF")    "format"))
-    "Inline"
-    (("h" (insert "#+html: ")         "HTML")
-     ("r" (insert "#+attr_html: ")    "attributes")
-     ("c" (insert "#+caption: ")      "caption")
-     ("n" (insert "#+name: ")         "name")
-     ("w" (insert (concat "{{< tweet user=\"Ladicle\" id=\"" (read-string "TweetID ⇢ ") "\" >}}")) "tweet shortcode"))
-    "Others"
-    (("#" self-insert-command "#")
-     ("." (insert (concat "#+" (read-string "metadata: ") ": ")) "#+<metadata>:")))))
+;; (leaf *org-hydra
+;;   :doc "Hydra template for org metadata"
+;;   :bind
+;;   ((:org-mode-map
+;;     :package org
+;;     ("#" . insert-or-open-org-hydra))
+;;    (:mozc-mode-map
+;;     :package mozc
+;;     ("#" . *org-hydra/body)))
+;;   :preface
+;;   (defun insert-or-open-org-hydra ()
+;;     (interactive)
+;;     (if (or (region-active-p) (looking-back "^\s*" 1))
+;;         (*org-hydra/body)
+;;       (self-insert-command 1)))
+;;   :pretty-hydra
+;;   ((:title " Org Mode" :color blue :quit-key "q" :foreign-keys warn :separator "-")
+;;    ("Header"
+;;     (("t" (insert "#+title: ")       "title")
+;;      ("l" (insert "#+lang: ")        "language")
+;;      ("u" (insert "#+setupfile: ~/doc/setup.org") "setupfile")
+;;      ("i" (insert "#+include: ")     "include")
+;;      ("o" (insert "#+options: ")     "options")
+;;      ("a" (insert (format-time-string "#+lastmod: [%Y-%m-%d %a %H:%M]" (current-time))) "lastmod"))
+;;     "Hugo"
+;;     (("d" (insert "#+draft: true")    "draft")
+;;      ("S" (insert "#+stale: true")    "stale")
+;;      ("m" (insert "#+menu: pin")      "pinned")
+;;      ("g" (insert "#+tags[]: ")       "tags")
+;;      ("x" (insert "#+hugo_base_dir: ~/Developments/src/github.com/Ladicle/blog") "base-dir")
+;;      ("s" (insert "#+hugo_section: post") "section"))
+;;     "Book"
+;;     (("p" (insert "#+progress: true") "progress")
+;;      ("f" (insert "#+format: PDF")    "format"))
+;;     "Inline"
+;;     (("h" (insert "#+html: ")         "HTML")
+;;      ("r" (insert "#+attr_html: ")    "attributes")
+;;      ("c" (insert "#+caption: ")      "caption")
+;;      ("n" (insert "#+name: ")         "name")
+;;      ("w" (insert (concat "{{< tweet user=\"Ladicle\" id=\"" (read-string "TweetID ⇢ ") "\" >}}")) "tweet shortcode"))
+;;     "Others"
+;;     (("#" self-insert-command "#")
+;;      ("." (insert (concat "#+" (read-string "metadata: ") ": ")) "#+<metadata>:")))))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -1589,57 +1637,57 @@
   (load-theme 'doom-dracula t)
   (doom-themes-neotree-config)
   (doom-themes-org-config))
-(leaf doom-theme-for-term
-  :doc "Show repository root in NeoTree"
-  :unless (window-system)
-  :preface
-  (defun doom-themes-neotree-insert-root-for-term (node)
-    ;; insert icon and project name
-    (insert
-     (propertize
-      (concat (propertize " " 'face 'neo-root-dir-face)
-              (or (neo-path--file-short-name node) "-")
-              "\n")
-      'face `(:inherit ,(append (if doom-themes-neotree-enable-variable-pitch '(variable-pitch))
-                                '(neo-root-dir-face))))))
-  :advice
-  (:override doom-themes-neotree-insert-root doom-themes-neotree-insert-root-for-term))
+;; (leaf doom-theme-for-term
+;;   :doc "Show repository root in NeoTree"
+;;   :unless (window-system)
+;;   :preface
+;;   (defun doom-themes-neotree-insert-root-for-term (node)
+;;     ;; insert icon and project name
+;;     (insert
+;;      (propertize
+;;       (concat (propertize " " 'face 'neo-root-dir-face)
+;;               (or (neo-path--file-short-name node) "-")
+;;               "\n")
+;;       'face `(:inherit ,(append (if doom-themes-neotree-enable-variable-pitch '(variable-pitch))
+;;                                 '(neo-root-dir-face))))))
+;;   :advice
+;;   (:override doom-themes-neotree-insert-root doom-themes-neotree-insert-root-for-term))
 
-(leaf nano-modeline
-  :doc "Nice and consistent look theme"
-  :url "https://github.com/rougier/nano-emacs"
-  :el-get "rougier/nano-emacs"
-  :require nano-faces nano-modeline
-  :custom
-  (frame-background-mode . 'dark)
-  (nano-color-foreground . "#f8f8f2")
-  (nano-color-background . "#282a36")
-  (nano-color-highlight  . "#373844")
-  (nano-color-critical   . "#bd93f9")
-  (nano-color-salient    . "#0189cc")
-  (nano-color-strong     . "#e2e2dc")
-  (nano-color-popout     . "#f8f8f2")
-  (nano-color-subtle     . "#44475a")
-  (nano-color-faded      . "#6272a4")
-  :custom-face
-  (hl-line                   . '((t (:background "#3B4252" :extend t ))))
-  (vertical-border           . '((t (:background "#282a36" :foreground "#1E2029"))))
-  (mode-line                 . '((t (:background "#282a36"))))
-  (mode-line-inactive        . '((t (:background "#282a36"))))
-  (nano-face-header-salient  . '((t (:foreground "#282a36" :background "#0189cc"))))
-  (nano-face-header-popout   . '((t (:foreground "#282a36" :background "#f1fa8c"))))
-  (nano-face-header-critical . '((t (:foreground "#282a36" :background "#bd93f9"))))
-  (nano-face-header-faded    . '((t (:foreground "#282a36" :background "#6272a4"))))
-  (nano-face-subtle          . '((t (:foreground "#282a36" :background "#44475a"))))
-  (nano-face-header-default  . '((t (:foreground "#b0b8d1" :background "#44475a"))))
-  (nano-face-header-strong   . '((t (:foreground "#f8f8f2" :background "#44475a" :weight bold)))))
+;; (leaf nano-modeline
+;;   :doc "Nice and consistent look theme"
+;;   :url "https://github.com/rougier/nano-emacs"
+;;   :el-get "rougier/nano-emacs"
+;;   :require nano-faces nano-modeline
+;;   :custom
+;;   (frame-background-mode . 'dark)
+;;   (nano-color-foreground . "#f8f8f2")
+;;   (nano-color-background . "#282a36")
+;;   (nano-color-highlight  . "#373844")
+;;   (nano-color-critical   . "#bd93f9")
+;;   (nano-color-salient    . "#0189cc")
+;;   (nano-color-strong     . "#e2e2dc")
+;;   (nano-color-popout     . "#f8f8f2")
+;;   (nano-color-subtle     . "#44475a")
+;;   (nano-color-faded      . "#6272a4")
+;;   :custom-face
+;;   (hl-line                   . '((t (:background "#3B4252" :extend t ))))
+;;   (vertical-border           . '((t (:background "#282a36" :foreground "#1E2029"))))
+;;   (mode-line                 . '((t (:background "#282a36"))))
+;;   (mode-line-inactive        . '((t (:background "#282a36"))))
+;;   (nano-face-header-salient  . '((t (:foreground "#282a36" :background "#0189cc"))))
+;;   (nano-face-header-popout   . '((t (:foreground "#282a36" :background "#f1fa8c"))))
+;;   (nano-face-header-critical . '((t (:foreground "#282a36" :background "#bd93f9"))))
+;;   (nano-face-header-faded    . '((t (:foreground "#282a36" :background "#6272a4"))))
+;;   (nano-face-subtle          . '((t (:foreground "#282a36" :background "#44475a"))))
+;;   (nano-face-header-default  . '((t (:foreground "#b0b8d1" :background "#44475a"))))
+;;   (nano-face-header-strong   . '((t (:foreground "#f8f8f2" :background "#44475a" :weight bold)))))
 
-(leaf *cursor-style
-  :doc "Set cursor style and color"
-  :if (window-system)
-  :config
-  (set-cursor-color "cyan")
-  (add-to-list 'default-frame-alist '(cursor-type . bar)))
+;; (leaf *cursor-style
+;;   :doc "Set cursor style and color"
+;;   :if (window-system)
+;;   :config
+;;   (set-cursor-color "cyan")
+;;   (add-to-list 'default-frame-alist '(cursor-type . bar)))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -1652,60 +1700,60 @@
   :doc "All the icons is used by NeoTree"
   :url "https://github.com/domtronn/all-the-icons.el"
   :ensure t)
-(leaf neotree
-  :doc "Sidebar for dired"
-  :url "https://github.com/jaypei/emacs-neotree"
-  :ensure t
-  :bind
-  ("<f9>" . neotree-projectile-toggle)
-  :custom
-  (neo-theme             . 'nerd)
-  (neo-cwd-line-style    . 'button)
-  (neo-autorefresh       . t)
-  (neo-show-hidden-files . t)
-  (neo-mode-line-type    . nil)
-  (neo-window-fixed-size . nil)
-  :hook (neotree-mode-hook . neo-hide-nano-header)
-  :preface
-  (defun neo-hide-nano-header ()
-    "Hide nano header."
-    (interactive)
-    (setq header-line-format ""))
-  (defun neotree-projectile-toggle ()
-    "Toggle function for projectile."
-    (interactive)
-    (let ((project-dir
-           (ignore-errors
-             (projectile-project-root)))
-          (file-name (buffer-file-name)))
-      (if (and (fboundp 'neo-global--window-exists-p)
-               (neo-global--window-exists-p))
-          (neotree-hide)
-        (progn
-          (neotree-show)
-          (if project-dir
-              (neotree-dir project-dir))
-          (if file-name
-              (neotree-find file-name))))))
-  :config
-  ;; Use nerd font in terminal.
-  (unless (window-system)
-    (advice-add
-     'neo-buffer--insert-fold-symbol
-     :override
-     (lambda (name &optional node-name)
-       (let ((n-insert-symbol (lambda (n)
-                                (neo-buffer--insert-with-face
-                                 n 'neo-expand-btn-face))))
-         (or (and (equal name 'open)  (funcall n-insert-symbol " "))
-             (and (equal name 'close) (funcall n-insert-symbol " "))
-             (and (equal name 'leaf)  (funcall n-insert-symbol ""))))))))
+;; (leaf neotree
+;;   :doc "Sidebar for dired"
+;;   :url "https://github.com/jaypei/emacs-neotree"
+;;   :ensure t
+;;   :bind
+;;   ("<f9>" . neotree-projectile-toggle)
+;;   :custom
+;;   (neo-theme             . 'nerd)
+;;   (neo-cwd-line-style    . 'button)
+;;   (neo-autorefresh       . t)
+;;   (neo-show-hidden-files . t)
+;;   (neo-mode-line-type    . nil)
+;;   (neo-window-fixed-size . nil)
+;;   :hook (neotree-mode-hook . neo-hide-nano-header)
+;;   :preface
+;;   (defun neo-hide-nano-header ()
+;;     "Hide nano header."
+;;     (interactive)
+;;     (setq header-line-format ""))
+;;   (defun neotree-projectile-toggle ()
+;;     "Toggle function for projectile."
+;;     (interactive)
+;;     (let ((project-dir
+;;            (ignore-errors
+;;              (projectile-project-root)))
+;;           (file-name (buffer-file-name)))
+;;       (if (and (fboundp 'neo-global--window-exists-p)
+;;                (neo-global--window-exists-p))
+;;           (neotree-hide)
+;;         (progn
+;;           (neotree-show)
+;;           (if project-dir
+;;               (neotree-dir project-dir))
+;;           (if file-name
+;;               (neotree-find file-name))))))
+;;   :config
+;;   ;; Use nerd font in terminal.
+;;   (unless (window-system)
+;;     (advice-add
+;;      'neo-buffer--insert-fold-symbol
+;;      :override
+;;      (lambda (name &optional node-name)
+;;        (let ((n-insert-symbol (lambda (n)
+;;                                 (neo-buffer--insert-with-face
+;;                                  n 'neo-expand-btn-face))))
+;;          (or (and (equal name 'open)  (funcall n-insert-symbol " "))
+;;              (and (equal name 'close) (funcall n-insert-symbol " "))
+;;              (and (equal name 'leaf)  (funcall n-insert-symbol ""))))))))
 
 (leaf imenu-list
-  :doc "Show the current buffer's imenu entries in a seperate buffer"
-  :url "https://github.com/Ladicle/imenu-list"
-  :el-get "Ladicle/imenu-list"
-  :bind ("<f10>" . imenu-list-smart-toggle)
+  :doc "Show imenu entries in a separate buffer"
+  :url "https://github.com/bmag/imenu-list"
+  :ensure t
+  :bind ("C-c '" . imenu-list-smart-toggle)
   :hook (imenu-list-major-mode-hook . neo-hide-nano-header)
   :custom
   (imenu-list-auto-resize . t)
@@ -1990,10 +2038,10 @@
           (which-key--show-keymap "Embark" map nil nil 'no-paging)
           #'which-key--hide-popup-ignore-command)
         embark-become-indicator embark-action-indicator))
-(leaf embark-consult
-  :ensure t
-  :hook
-  (embark-collect-mode . consult-preview-at-point-mode))
+;; (leaf embark-consult
+;;   :ensure t
+;;   :hook
+;;   (embark-collect-mode . consult-preview-at-point-mode))
 
 ;; -----------------------------------------------------------------------------------------
 ;;
@@ -2023,6 +2071,7 @@
    ("M-!" . async-shell-command)
    ("M-@" . shell-command)
    ;; Browse
+   ("C-t" . other-window)
    ("C-c C-o" . browse-url-or-copy)))
 
 ;; Hydra Templates -------------------------------------------------------------------------
@@ -2198,3 +2247,94 @@
 (provide 'init)
 ;;; init.el ends here
 
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(embark-consult embark orderless marginalia consult-ghq affe consult-flycheck consult vertico-posframe vertico projectile anzu beacon hl-todo highlight-indent-guides highlight-symbol rainbow-delimiters rainbow-mode visual-fill-column which-key major-mode-hydra doom-themes company-org-block org-journal ob-go ob-async ox-qmd ox-hugo org-modern org-bullets org markdown-toc markdown-mode gnuplot terraform-mode dockerfile-mode protobuf-mode systemd yaml-mode fish-mode typescript-mode js2-mode modern-cpp-font-lock ccls cc-mode yapfify lsp-pyright go-mode rustic dap-mode lsp-ui lsp-mode quickrun browse-at-remote git-gutter magit git-modes docker-tramp docker company yasnippet flyspell-correct flyspell flycheck ace-window avy-zap avy mwim smartparens mozc undo-fu no-littering package-utils transient-dwim leaf-convert leaf-tree blackout el-get hydra leaf-keywords leaf)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(aw-leading-char-face ((t (:height 4.0 :foreground "#f1fa8c"))) nil "Customized with leaf in `ace-window' block")
+ '(company-template-field ((t (:foreground "#ff79c6"))) nil "Customized with leaf in `company' block")
+ '(company-tooltip ((t (:background "#323445"))) nil "Customized with leaf in `company' block")
+ '(flyspell-duplicate ((t (:underline (:color "#50fa7b" :style wave)))) nil "Customized with leaf in `flyspell' block")
+ '(flyspell-incorrect ((t (:underline (:color "#f1fa8c" :style wave)))) nil "Customized with leaf in `flyspell' block")
+ '(font-lock-variable-name-face ((t (:foreground "violet"))) nil "Customized with leaf in `yaml-mode' block")
+ '(git-gutter:added ((t (:foreground "#50fa7b"))) nil "Customized with leaf in `git-gutter' block")
+ '(git-gutter:deleted ((t (:foreground "#ff79c6"))) nil "Customized with leaf in `git-gutter' block")
+ '(git-gutter:modified ((t (:foreground "#f1fa8c"))) nil "Customized with leaf in `git-gutter' block")
+ '(hl-line ((t (:background "#3B4252" :extend t))) nil "Customized with leaf in `nano-modeline' block")
+ '(hydra-face-amaranth ((t (:foreground "#f1fa8c"))) nil "Customized with leaf in `*hydra-theme' block")
+ '(hydra-face-blue ((t (:foreground "#8be9fd"))) nil "Customized with leaf in `*hydra-theme' block")
+ '(hydra-face-pink ((t (:foreground "#ff79c6"))) nil "Customized with leaf in `*hydra-theme' block")
+ '(hydra-face-red ((t (:foreground "#bd93f9"))) nil "Customized with leaf in `*hydra-theme' block")
+ '(hydra-face-teal ((t (:foreground "#61bfff"))) nil "Customized with leaf in `*hydra-theme' block")
+ '(imenu-list-entry-face-1 ((t (:foreground "white"))) nil "Customized with leaf in `imenu-list' block")
+ '(imenu-list-entry-subalist-face-0 ((nil (:weight normal))) nil "Customized with leaf in `imenu-list' block")
+ '(imenu-list-entry-subalist-face-1 ((nil (:weight normal))) nil "Customized with leaf in `imenu-list' block")
+ '(imenu-list-entry-subalist-face-2 ((nil (:weight normal))) nil "Customized with leaf in `imenu-list' block")
+ '(imenu-list-entry-subalist-face-3 ((nil (:weight normal))) nil "Customized with leaf in `imenu-list' block")
+ '(lsp-ui-doc-background ((t (:background "#282a36"))) nil "Customized with leaf in `lsp-ui' block")
+ '(lsp-ui-doc-header ((t (:foreground "#76e0f3" :weight bold))) nil "Customized with leaf in `lsp-ui' block")
+ '(lsp-ui-doc-url ((t (:foreground "#6272a4"))) nil "Customized with leaf in `lsp-ui' block")
+ '(marginalia-documentation ((t (:foreground "#6272a4"))) nil "Customized with leaf in `marginalia' block")
+ '(markdown-bold-face ((t (:foreground "#f8f8f2" :weight bold))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-gfm-checkbox-face ((t (:foreground "#6272a4"))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-header-delimiter-face ((t (:foreground "#6272a4" :weight normal))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-header-face-1 ((t (:inherit outline-1 :weight bold :height 1.5))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-header-face-2 ((t (:inherit outline-1 :weight normal :height 1.2))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-header-face-3 ((t (:inherit outline-1 :weight normal :height 1.1))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-header-face-4 ((t (:inherit outline-1 :weight normal))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-italic-face ((t (:foreground "#f8f8f2" :slant italic))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-link-face ((t (:foreground "#f1fa8c"))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-list-face ((t (:foreground "#6272a4"))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-metadata-key-face ((t (:foreground "#6272a4"))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-metadata-value-face ((t (:foreground "#8995ba"))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-pre-face ((t (:foreground "#8be9fd"))) nil "Customized with leaf in `markdown-mode' block")
+ '(markdown-url-face ((t (:foreground "#6272a4"))) nil "Customized with leaf in `markdown-mode' block")
+ '(mode-line ((t (:background "#282a36"))) nil "Customized with leaf in `nano-modeline' block")
+ '(mode-line-inactive ((t (:background "#282a36"))) nil "Customized with leaf in `nano-modeline' block")
+ '(nano-face-header-critical ((t (:foreground "#282a36" :background "#bd93f9"))) t "Customized with leaf in `nano-modeline' block")
+ '(nano-face-header-default ((t (:foreground "#b0b8d1" :background "#44475a"))) t "Customized with leaf in `nano-modeline' block")
+ '(nano-face-header-faded ((t (:foreground "#282a36" :background "#6272a4"))) t "Customized with leaf in `nano-modeline' block")
+ '(nano-face-header-popout ((t (:foreground "#282a36" :background "#f1fa8c"))) t "Customized with leaf in `nano-modeline' block")
+ '(nano-face-header-salient ((t (:foreground "#282a36" :background "#0189cc"))) t "Customized with leaf in `nano-modeline' block")
+ '(nano-face-header-strong ((t (:foreground "#f8f8f2" :background "#44475a" :weight bold))) t "Customized with leaf in `nano-modeline' block")
+ '(nano-face-subtle ((t (:foreground "#282a36" :background "#44475a"))) t "Customized with leaf in `nano-modeline' block")
+ '(org-checkbox ((t (:foreground "#bd93f9"))) nil "Customized with leaf in `org-theme' block")
+ '(org-date ((t (:foreground "#8995ba"))) nil "Customized with leaf in `org-theme' block")
+ '(org-document-title ((t (:foreground "#f8f8f2"))) nil "Customized with leaf in `org-theme' block")
+ '(org-done ((t (:background "#373844" :foreground "#216933" :strike-through nil :weight bold :width condensed))) nil "Customized with leaf in `org-theme' block")
+ '(org-drawer ((t (:foreground "#44475a"))) nil "Customized with leaf in `org-theme' block")
+ '(org-footnote ((t (:foreground "#76e0f3"))) nil "Customized with leaf in `org-theme' block")
+ '(org-journal-calendar-entry-face ((t (:foreground "#ff79c6"))) nil "Customized with leaf in `org-journal' block")
+ '(org-level-1 ((t (:inherit outline-1 :height 1.2))) nil "Customized with leaf in `org-theme' block")
+ '(org-level-2 ((t (:inherit outline-2 :weight normal))) nil "Customized with leaf in `org-theme' block")
+ '(org-level-3 ((t (:inherit outline-3 :weight normal))) nil "Customized with leaf in `org-theme' block")
+ '(org-level-4 ((t (:inherit outline-4 :weight normal))) nil "Customized with leaf in `org-theme' block")
+ '(org-level-5 ((t (:inherit outline-5 :weight normal))) nil "Customized with leaf in `org-theme' block")
+ '(org-level-6 ((t (:inherit outline-6 :weight normal))) nil "Customized with leaf in `org-theme' block")
+ '(org-link ((t (:foreground "#f1fa8c" :underline nil :weight normal))) nil "Customized with leaf in `org-theme' block")
+ '(org-list-dt ((t (:foreground "#bd93f9"))) nil "Customized with leaf in `org-theme' block")
+ '(org-meta-line ((t (:foreground "#6272a4"))) nil "Customized with leaf in `org-theme' block")
+ '(org-modern-date-active ((t (:background "#373844" :foreground "#f8f8f2" :height 0.75 :weight light :width condensed))) nil "Customized with leaf in `org-modern' block")
+ '(org-modern-date-inactive ((t (:background "#373844" :foreground "#b0b8d1" :height 0.75 :weight light :width condensed))) nil "Customized with leaf in `org-modern' block")
+ '(org-modern-statistics ((t (:foreground "#6272a4" :weight light :width condensed))) nil "Customized with leaf in `org-modern' block")
+ '(org-modern-tag ((t (:background "#44475a" :foreground "#b0b8d1" :height 0.75 :weight light :width condensed))) nil "Customized with leaf in `org-modern' block")
+ '(org-modern-time-active ((t (:background "#44475a" :foreground "#f8f8f2" :height 0.75 :weight light :width condensed))) nil "Customized with leaf in `org-modern' block")
+ '(org-modern-time-inactive ((t (:background "#44475a" :foreground "#b0b8d1" :height 0.75 :weight light :width condensed))) nil "Customized with leaf in `org-modern' block")
+ '(org-priority ((t (:foreground "#ebe087"))) nil "Customized with leaf in `org-theme' block")
+ '(org-scheduled-today ((t (:foreground "#f8f8f2"))) nil "Customized with leaf in `*org-agenda' block")
+ '(org-special-keyword ((t (:foreground "#6272a4"))) nil "Customized with leaf in `org-theme' block")
+ '(org-tag ((t (:foreground "#6272a4"))) nil "Customized with leaf in `org-theme' block")
+ '(org-todo ((t (:foreground "#51fa7b" :weight bold :width condensed))) nil "Customized with leaf in `org-theme' block")
+ '(show-paren-match ((nil (:background "#44475a" :foreground "#f1fa8c"))) nil "Customized with leaf in `*paren' block")
+ '(vertical-border ((t (:background "#282a36" :foreground "#1E2029"))) nil "Customized with leaf in `nano-modeline' block")
+ '(vertico-posframe-border ((t (:background "#323445"))) nil "Customized with leaf in `vertico-posframe' block")
+ '(vhl/default-face ((nil (:foreground "#FF3333" :background "#FFCDCD"))) nil "Customized with leaf in `volatile-highlights' block")
+ '(yas-field-highlight-face ((t (:foreground "#ff79c6"))) nil "Customized with leaf in `company' block"))
